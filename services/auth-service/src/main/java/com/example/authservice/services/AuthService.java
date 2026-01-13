@@ -71,7 +71,7 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String jwt = tokenService.generateToken(authentication);
+        String jwt = tokenService.generateToken(authentication, user.getId());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
         return AuthResponse.builder()
@@ -90,7 +90,7 @@ public class AuthService {
             throw new RuntimeException("Invalid MFA code");
         }
 
-        String jwt = tokenService.generateToken(user.getEmail(), user.getRole());
+        String jwt = tokenService.generateToken(user.getEmail(), user.getRole(), user.getId());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
         return AuthResponse.builder()
@@ -133,7 +133,7 @@ public class AuthService {
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUser)
                 .map(user -> {
-                    String token = tokenService.generateToken(user.getEmail(), user.getRole());
+                    String token = tokenService.generateToken(user.getEmail(), user.getRole(), user.getId());
                     return AuthResponse.builder()
                             .accessToken(token)
                             .refreshToken(request.getRefreshToken())
