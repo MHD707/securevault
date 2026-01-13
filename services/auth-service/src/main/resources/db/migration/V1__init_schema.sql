@@ -1,0 +1,18 @@
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    mfa_secret VARCHAR(255),
+    mfa_enabled BOOLEAN DEFAULT FALSE,
+    role VARCHAR(50) DEFAULT 'ROLE_USER',
+    created_at TIMESTAMP WITHOUT TIME ZONE,
+    updated_at TIMESTAMP WITHOUT TIME ZONE
+);
+
+CREATE TABLE refresh_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    expiry_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    user_id BIGINT UNIQUE,
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
+);

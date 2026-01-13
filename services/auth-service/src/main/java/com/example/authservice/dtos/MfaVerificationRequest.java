@@ -1,0 +1,12 @@
+package com.example.authservice.dtos;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class MfaVerificationRequest {
+    @NotBlank
+    private String email;
+    @NotBlank
+    private String code;
+}
