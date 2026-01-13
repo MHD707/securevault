@@ -1,6 +1,7 @@
 package com.example.authservice.services;
 
 import com.example.authservice.entities.RefreshToken;
+import com.example.authservice.entities.User;
 import com.example.authservice.repositories.RefreshTokenRepository;
 import com.example.authservice.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,15 +29,26 @@ public class RefreshTokenService {
         return refreshTokenRepository.findByToken(token);
     }
 
+    @Transactional
     public RefreshToken createRefreshToken(Long userId) {
-        RefreshToken refreshToken = new RefreshToken();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Check if a token already exists for this user
+        Optional<RefreshToken> existingToken = refreshTokenRepository.findByUser(user);
+        
+        RefreshToken refreshToken;
+        if (existingToken.isPresent()) {
+            refreshToken = existingToken.get();
+        } else {
+            refreshToken = new RefreshToken();
+            refreshToken.setUser(user);
+        }
 
-        refreshToken.setUser(userRepository.findById(userId).get());
-        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationDays * 24 * 60 * 60 * 1000));
         refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationDays * 24 * 60 * 60 * 1000));
 
-        refreshToken = refreshTokenRepository.save(refreshToken);
-        return refreshToken;
+        return refreshTokenRepository.save(refreshToken);
     }
 
     public RefreshToken verifyExpiration(RefreshToken token) {
