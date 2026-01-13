@@ -143,4 +143,10 @@ public class AuthService {
                 })
                 .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
     }
+
+    public void logout(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        refreshTokenService.deleteByUserId(user.getId());
+    }
 }

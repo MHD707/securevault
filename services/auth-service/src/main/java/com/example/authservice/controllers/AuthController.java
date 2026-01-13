@@ -48,4 +48,10 @@ public class AuthController {
         authService.confirmMfaSetup(authentication.getName(), request.get("code"));
         return ResponseEntity.ok("MFA enabled successfully");
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(Authentication authentication) {
+        authService.logout(authentication.getName());
+        return ResponseEntity.ok("User logged out successfully");
+    }
 }
