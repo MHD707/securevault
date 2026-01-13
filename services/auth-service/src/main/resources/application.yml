@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/securevault_auth
     username: postgres
-    password: postgres
+    password: admin
   jpa:
     hibernate:
       ddl-auto: validate
