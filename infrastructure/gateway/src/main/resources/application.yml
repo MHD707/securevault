@@ -1,0 +1,47 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      routes:
+        # Route d'origine pour AUTH-SERVICE
+        - id: auth-service-route
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: authCb
+                fallbackUri: forward:/fallback/auth
+
+        # Exemple d’une route protégée pour USERS-SERVICE (comme dans le TP, optionnel)
+        # - id: users-route
+        #   uri: lb://USERS-SERVICE
+        #   predicates:
+        #     - Path=/users/**
+        #   filters:
+        #     - name: CircuitBreaker
+        #       args:
+        #         name: usersCb
+        #         fallbackUri: forward:/fallback/users
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
