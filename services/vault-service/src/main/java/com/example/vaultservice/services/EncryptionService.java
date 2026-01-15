@@ -3,6 +3,7 @@ package com.example.vaultservice.services;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,17 @@ public class EncryptionService {
     private String secretKey;
 
     private static final String ALGORITHM = "AES";
+
+    @PostConstruct
+    public void validateKeyLength() {
+        int keyLength = secretKey.getBytes(StandardCharsets.UTF_8).length;
+        if (keyLength != 16 && keyLength != 24 && keyLength != 32) {
+            throw new IllegalStateException(
+                "Invalid AES key length: " + keyLength + " bytes. " +
+                "Configure encryption.secret-key as 16, 24, or 32 bytes."
+            );
+        }
+    }
 
     public String encrypt(String value) {
         try {
