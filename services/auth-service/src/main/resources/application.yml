@@ -31,5 +31,6 @@ management:
 security:
   jwt:
     issuer: securevault
+    key-id: securevault-key-1
     access-ttl-minutes: 15
     refresh-ttl-days: 7
