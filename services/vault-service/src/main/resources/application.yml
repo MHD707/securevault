@@ -38,5 +38,5 @@ security:
     issuer: securevault
 
 encryption:
-  secret-key: "MySuperSecretKeyForEncryption!!" # 32 chars for AES-256
+  secret-key: "MySuperSecretKeyForEncryption!!!" # 32 chars for AES-256
   salt: "SecureSalt123"
