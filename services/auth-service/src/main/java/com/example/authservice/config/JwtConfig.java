@@ -34,6 +34,11 @@ public class JwtConfig {
     }
 
     @Bean
+    public RSAPublicKey publicKey() {
+        return this.publicKey;
+    }
+
+    @Bean
     public JwtDecoder jwtDecoder() {
         return NimbusJwtDecoder.withPublicKey(this.publicKey).build();
     }
