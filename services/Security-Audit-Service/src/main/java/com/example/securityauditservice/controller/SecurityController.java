@@ -33,17 +33,28 @@ public class SecurityController {
             @RequestBody AlertRequest request) {
 
         String userId = jwt.getSubject();
-        Alert alert = securityService.checkPassword(userId, request);
+        List<Alert> alerts = securityService.checkPassword(userId, request);
 
         Map<String, Object> response = new HashMap<>();
-        if (alert != null) {
+        if (alerts != null && !alerts.isEmpty()) {
             response.put("created", true);
-            response.put("alert", alert);
+            response.put("alerts", alerts);
         } else {
             response.put("created", false);
-            response.put("alert", null);
+            response.put("alerts", List.of());
         }
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/mfa-check")
+    @Operation(summary = "Report MFA status change")
+    public ResponseEntity<Void> checkMfaStatus(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam boolean enabled) {
+
+        String userId = jwt.getSubject();
+        securityService.checkMfaStatus(userId, enabled);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/alerts")

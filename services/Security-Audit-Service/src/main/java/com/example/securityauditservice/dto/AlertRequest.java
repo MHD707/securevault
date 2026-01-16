@@ -7,4 +7,6 @@ public class AlertRequest {
     private String vaultItemId;
     private int score;
     private String level; // WEAK, VERY_WEAK, etc.
+    private boolean isReused;
+    private boolean isCompromised;
 }

@@ -26,72 +26,84 @@ public class SecurityService {
     private final AlertRepository alertRepository;
 
     @Transactional
-    public Alert checkPassword(String userId, AlertRequest request) {
+    public List<Alert> checkPassword(String userId, AlertRequest request) {
         log.info("Checking password security for user: {}, item: {}", userId, request.getVaultItemId());
+        List<Alert> createdOrUpdatedAlerts = new java.util.ArrayList<>();
 
+        // 1. Weak Password Check
         boolean isWeak = request.getScore() < 50 ||
                 "WEAK".equalsIgnoreCase(request.getLevel()) ||
                 "VERY_WEAK".equalsIgnoreCase(request.getLevel());
 
         if (isWeak) {
-            return upsertWeakPasswordAlert(userId, request);
+            createdOrUpdatedAlerts.add(upsertAlert(userId, request.getVaultItemId(), AlertType.WEAK_PASSWORD,
+                    determineSeverity(request), "Weak Password Detected",
+                    "Password score: " + request.getScore() + ", Level: " + request.getLevel()));
         } else {
-            resolveExistingWeakPasswordAlert(userId, request.getVaultItemId());
-            return null;
+            resolveExistingAlert(userId, request.getVaultItemId(), AlertType.WEAK_PASSWORD);
+        }
+
+        // 2. Reused Password Check
+        if (request.isReused()) {
+            createdOrUpdatedAlerts.add(upsertAlert(userId, request.getVaultItemId(), AlertType.REUSED_PASSWORD,
+                    AlertSeverity.MEDIUM, "Reused Password Detected",
+                    "This password has been used before. Please use unique passwords."));
+        } else {
+            resolveExistingAlert(userId, request.getVaultItemId(), AlertType.REUSED_PASSWORD);
+        }
+
+        // 3. Compromised Password Check
+        if (request.isCompromised()) {
+            createdOrUpdatedAlerts.add(upsertAlert(userId, request.getVaultItemId(), AlertType.COMPROMISED_PASSWORD,
+                    AlertSeverity.HIGH, "Compromised Password Detected",
+                    "This password appears in a known data breach. Change it immediately."));
+        } else {
+            resolveExistingAlert(userId, request.getVaultItemId(), AlertType.COMPROMISED_PASSWORD);
+        }
+
+        return createdOrUpdatedAlerts;
+    }
+
+    @Transactional
+    public void checkMfaStatus(String userId, boolean isEnabled) {
+        if (!isEnabled) {
+            upsertAlert(userId, "MFA_STATUS", AlertType.MFA_DISABLED, AlertSeverity.HIGH,
+                    "MFA Disabled", "Multi-Factor Authentication is disabled. Enable it for better security.");
+        } else {
+            resolveExistingAlert(userId, "MFA_STATUS", AlertType.MFA_DISABLED);
         }
     }
 
-    private Alert upsertWeakPasswordAlert(String userId, AlertRequest request) {
-        Optional<Alert> existingAlert = alertRepository.findByUserIdAndRelatedItemIdAndType(
-                userId, request.getVaultItemId(), AlertType.WEAK_PASSWORD);
+    private Alert upsertAlert(String userId, String relatedItemId, AlertType type, AlertSeverity severity, String title,
+            String details) {
+        Optional<Alert> existingAlert = alertRepository.findByUserIdAndRelatedItemIdAndType(userId, relatedItemId,
+                type);
 
         if (existingAlert.isPresent()) {
             Alert alert = existingAlert.get();
-            if (alert.getStatus() != AlertStatus.IGNORED) { // Don't reactivate if ignored? Or should we?
-                // Requirement says "create or upsert an ACTIVE alert".
-                // Usually if it's ignored, we might leave it. But if it gets WORSE or same,
-                // maybe we shouldn't bother the user if they ignored it.
-                // However, let's strictly follow "create or upsert an ACTIVE alert".
-                // If I have an IGNORED alert, and I save the password again and it's still
-                // weak,
-                // maybe I should keep it IGNORED.
-                // But the prompt says "create or upsert an ACTIVE alert".
-                // Let's assume if it was resolved, we reactivate it. If it was Active, we
-                // update it.
-                // If Ignored? Let's keep it Ignored unless explicitly asked to un-ignore.
-                // But simpler MVP approach: Make it ACTIVE.
-                // "Behavior: If level ... => create or upsert an ACTIVE alert"
-                // So I will set it to ACTIVE.
+            if (alert.getStatus() != AlertStatus.IGNORED) {
                 alert.setStatus(AlertStatus.ACTIVE);
             }
-            // Actually, if I ignore a weak password, I probably don't want to be pestered
-            // again immediately.
-            // But if I change the password and it's STILL weak, maybe I should be notified?
-            // Since we don't know if the password CHANGED or if it's just a re-check,
-            // Let's safe bet: Update details, but if it is IGNORED, maybe leave it?
-            // Let's stick to the prompt text: "create or upsert an ACTIVE alert".
-            // This implies ensuring it IS active.
-            alert.setStatus(AlertStatus.ACTIVE); // Reactivate it
-            alert.setSeverity(determineSeverity(request));
-            alert.setDetails("Password score: " + request.getScore() + ", Level: " + request.getLevel());
-            alert.setTitle("Weak Password Detected"); // Or update title
+            alert.setSeverity(severity); // Update severity if it changes
+            alert.setDetails(details);
+            alert.setTitle(title);
             return alertRepository.save(alert);
         } else {
             Alert newAlert = Alert.builder()
                     .userId(userId)
-                    .type(AlertType.WEAK_PASSWORD)
-                    .severity(determineSeverity(request))
+                    .type(type)
+                    .severity(severity)
                     .status(AlertStatus.ACTIVE)
-                    .title("Weak Password Detected")
-                    .details("Password score: " + request.getScore() + ", Level: " + request.getLevel())
-                    .relatedItemId(request.getVaultItemId())
+                    .title(title)
+                    .details(details)
+                    .relatedItemId(relatedItemId)
                     .build();
             return alertRepository.save(newAlert);
         }
     }
 
-    private void resolveExistingWeakPasswordAlert(String userId, String vaultItemId) {
-        alertRepository.findByUserIdAndRelatedItemIdAndType(userId, vaultItemId, AlertType.WEAK_PASSWORD)
+    private void resolveExistingAlert(String userId, String relatedItemId, AlertType type) {
+        alertRepository.findByUserIdAndRelatedItemIdAndType(userId, relatedItemId, type)
                 .ifPresent(alert -> {
                     if (alert.getStatus() == AlertStatus.ACTIVE) {
                         alert.setStatus(AlertStatus.RESOLVED);
