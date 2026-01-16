@@ -19,7 +19,6 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8081 # Auth Service URL
           jwk-set-uri: http://localhost:8081/oauth2/jwks
 
 springdoc:
